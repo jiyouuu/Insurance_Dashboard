@@ -17,7 +17,10 @@ export default function LogPage() {
   // 로그에 level 추가 (result 기반)
   const enriched = logs.map(l=>({
     ...l,
-    level: l.result==='SUCCESS'?'SUCCESS':l.result==='FAILURE'?'ERROR':'INFO',
+   level: l.result === 'SUCCESS' ? 'SUCCESS'
+     : l.result === 'FAILURE' ? 'ERROR'
+     : l.result === 'WARN'    ? 'WARN'
+     : 'INFO',
     ifaceName: ifaces.find(i=>i.id===l.interfaceId)?.name || `#${l.interfaceId}`
   }));
 

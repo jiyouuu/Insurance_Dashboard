@@ -1037,18 +1037,52 @@ public class DataInitializer implements CommandLineRunner {
         // 각 인터페이스에 로그 3~5개씩 추가
         for (InterfaceInfo iface : saved) {
             for (int i = 0; i < 4; i++) {
-                boolean isSuccess = Math.random() > 0.3;
+            	InterfaceLog.LogResult result = randomResult();
+            	String message = randomMessage(result);
                 logRepo.save(InterfaceLog.builder()
                         .interfaceInfo(iface)
                         .executedAt(LocalDateTime.now().minusHours(i * 3L))
-                        .result(isSuccess ? InterfaceLog.LogResult.SUCCESS : InterfaceLog.LogResult.FAILURE)
-                        .message(isSuccess ? "정상 처리 완료" : "연결 타임아웃 (30s 초과)")
+                        .result(result)
+                        .message(message)
                         .durationMs((long)(Math.random() * 800 + 50))
                         .build());
             }
         }
     }
-
+    
+    private InterfaceLog.LogResult randomResult() {
+        int r = (int)(Math.random() * 10);
+        if (r < 5) return InterfaceLog.LogResult.SUCCESS;  // 50%
+        if (r < 7) return InterfaceLog.LogResult.INFO;     // 20%
+        if (r < 9) return InterfaceLog.LogResult.WARN;     // 20%
+        return InterfaceLog.LogResult.FAILURE;              // 10%
+    }
+    
+    private String randomMessage(InterfaceLog.LogResult result) {
+        switch (result) {
+            case SUCCESS: return randomPick(new String[]{
+                "정상 처리 완료", "데이터 전송 성공", "응답 수신 완료",
+                "배치 처리 완료", "파일 전송 성공"
+            });
+            case FAILURE: return randomPick(new String[]{
+                "연결 타임아웃 (30s 초과)", "인증 실패 - 토큰 만료",
+                "서버 응답 없음 (503)", "SSH key 불일치", "API 호출 한도 초과"
+            });
+            case WARN: return randomPick(new String[]{
+                "응답시간 임계값 초과 (300ms)", "재시도 후 성공 (1회)",
+                "부분 데이터 누락 감지", "연결 지연 발생", "큐 적체 경고"
+            });
+            case INFO: return randomPick(new String[]{
+                "스케줄 실행 시작", "배치 작업 등록됨",
+                "설정 변경 감지 - 재적용", "헬스체크 정상", "연결 풀 갱신"
+            });
+            default: return "처리 완료";
+        }
+    }
+    
+    private String randomPick(String[] arr) {
+        return arr[(int)(Math.random() * arr.length)];
+    }
     private InterfaceInfo build(String name, String institution,
                                  InterfaceInfo.Protocol protocol,
                                  InterfaceInfo.InterfaceStatus status,

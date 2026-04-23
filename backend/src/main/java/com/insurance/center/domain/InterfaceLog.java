@@ -22,12 +22,12 @@ public class InterfaceLog {
     private LocalDateTime executedAt;
 
     @Enumerated(EnumType.STRING)
-    private LogResult result;   // SUCCESS, FAILURE
+    private LogResult result;   
 
     private String message;
     private Long durationMs;    // 실행 소요시간 (ms)
 
     public enum LogResult {
-        SUCCESS, FAILURE
+    	SUCCESS, FAILURE, INFO, WARN
     }
 }
