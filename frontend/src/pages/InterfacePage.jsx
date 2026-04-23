@@ -4,12 +4,11 @@ import { executeInterface, retryInterface } from '../api/interfaceApi';
 const STATUSES  = ['','NORMAL','ERROR','RUNNING','PENDING'];
 const PROTOCOLS = ['','REST','SOAP','MQ','BATCH','SFTP','FTP'];
 
-export default function InterfacePage({ interfaces, onRefresh, onRegister, showToast }) {
+export default function InterfacePage({ interfaces, onRefresh, onRegister, showToast,initFilter  }) {
   const [search, setSearch]     = useState('');
-  const [filterS, setFilterS]   = useState('');
   const [filterP, setFilterP]   = useState('');
   const [selected, setSelected] = useState(null);
-
+  const [filterS, setFilterS] = useState(initFilter || '');  // ← initFilter 초기값
   const filtered = interfaces.filter(i => {
     if (filterS && i.status   !== filterS) return false;
     if (filterP && i.protocol !== filterP) return false;

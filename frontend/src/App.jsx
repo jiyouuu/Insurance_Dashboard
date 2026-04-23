@@ -28,6 +28,14 @@ export default function App() {
   const [selectedIface, setSelectedIface] = useState(null);
   const [toast, setToast]         = useState({message:'',type:''});
   const [hourlyStats, setHourlyStats] = useState([]);
+  const [initFilter, setInitFilter] = useState('');
+
+
+  // 페이지 이동 + 필터 동시에
+  const goWithFilter = (tab, filter = '') => {
+  setInitFilter(filter);
+  setTab(tab);
+  };
 
   const load = async () => {
     const [s, i, h] = await Promise.all([
@@ -69,8 +77,8 @@ export default function App() {
       </nav>
 
       {/* Pages */}
-      {tab==='dashboard' && <DashboardPage summary={summary} interfaces={interfaces} hourlyStats={hourlyStats} onTabChange={setTab} onSelectIface={setSelectedIface} />}
-      {tab==='interfaces' && <InterfacePage  interfaces={interfaces} onRefresh={load} onRegister={()=>setShowReg(true)} showToast={showToast} />}
+      {tab==='dashboard' && <DashboardPage summary={summary} interfaces={interfaces} hourlyStats={hourlyStats} onTabChange={setTab} onSelectIface={setSelectedIface} onGoWithFilter={goWithFilter} />}
+      {tab==='interfaces' && <InterfacePage interfaces={interfaces} onRefresh={load} onRegister={()=>setShowReg(true)} showToast={showToast} initFilter={initFilter} />}  
       {tab==='monitor' && <MonitoringPage hourlyStats={hourlyStats} />}
       {tab==='reprocess'  && <ReprocessPage  interfaces={interfaces} onRefresh={load} showToast={showToast} />}
       {tab==='logs'       && <LogPage />}

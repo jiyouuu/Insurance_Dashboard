@@ -2,14 +2,14 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis
 
 const DONUT_COLORS = ['#3fb950','#f85149','#58a6ff','#d29922'];
 
-export default function DashboardPage({summary, interfaces, hourlyStats, onTabChange, onSelectIface }) {
+export default function DashboardPage({summary, interfaces, hourlyStats, onTabChange, onSelectIface,onGoWithFilter }) {
   
    // 실제 데이터로 교체
   const tpData = hourlyStats.map(h => ({
     h: `${String(h.hour).padStart(2,'0')}:00`,
     v: h.total
   }));
-  
+
   const donutData = [
     {name:'정상',  value:summary.normal},
     {name:'오류',  value:summary.error},
@@ -22,19 +22,39 @@ export default function DashboardPage({summary, interfaces, hourlyStats, onTabCh
   return (
     <div className="page">
       <div className="stats-grid">
-        {[
-          {cls:'total',  label:'Total Interfaces', value:summary.total,   desc:'전체 등록 인터페이스', icon:'⛓'},
-          {cls:'normal', label:'Normal',            value:summary.normal,  desc:'정상 운영 중',         icon:'✓'},
-          {cls:'error',  label:'Error',             value:summary.error,   desc:'즉시 조치 필요',       icon:'!'},
-          {cls:'pending',label:'Pending / Running', value:summary.pending+summary.running, desc:'대기 및 실행중', icon:'↺'},
-        ].map(c=>(
-          <div key={c.cls} className={`stat-card ${c.cls}`}>
-            <div className="stat-label">{c.label}</div>
-            <div className="stat-value">{c.value}</div>
-            <div className="stat-desc">{c.desc}</div>
-            <div className="stat-icon">{c.icon}</div>
-          </div>
-        ))}
+        <div className="stat-card total">
+          <div className="s-label">Total Interfaces</div>
+          <div className="stat-value">{summary.total}</div>
+          <div className="stat-desc">전체 등록 인터페이스</div>
+          <div className="stat-icon">⛓</div>
+        </div>
+        <div className="stat-card normal">
+          <div className="stat-label">Normal</div>
+          <div className="stat-value">{summary.normal}</div>
+          <div className="stat-desc">정상 운영 중</div>
+          <div className="stat-icon">✓</div>
+        </div>
+
+        {/* 클릭 가능한 카드들 */}
+        <div className="stat-card error"
+          onClick={() => onGoWithFilter('reprocess')}
+          style={{cursor:'pointer'}}
+        >
+          <div className="stat-label">Error</div>
+          <div className="stat-value">{summary.error}</div>
+          <div className="stat-desc">즉시 조치 필요 →</div>
+          <div className="stat-icon">!</div>
+        </div>
+
+        <div className="stat-card pending"
+          onClick={() => onGoWithFilter('interfaces', summary.running > 0 ? 'RUNNING' : 'PENDING')}
+          style={{cursor:'pointer'}}
+        >
+          <div className="stat-label">Pending / Running</div>
+          <div className="stat-value">{summary.pending + summary.running}</div>
+          <div className="stat-desc">목록에서 확인 →</div>
+          <div className="stat-icon">↺</div>
+        </div>
       </div>
 
       <div className="dash-row">
