@@ -1,21 +1,25 @@
 import { useEffect, useState } from 'react';
-import { getAllLogs, getInterfaces } from '../api/interfaceApi';
+import { getAllLogs, getInterfaces, getHourlyStats } from '../api/interfaceApi';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
-const hours = Array.from({length:24},(_,i)=>String(i).padStart(2,'0'));
-const errRates=[0.2,0.1,0,0,0,0.1,0.3,5.2,0.8,0.4,0.3,0.2,0.3,0.4,0.2,0.3,0.4,0.2,0.1,0.2,0.1,0.3,0.1,0.2];
-const errData = hours.map((h,i)=>({h:`${h}:00`,v:errRates[i]}));
+
+
 const protoData = [{name:'REST',v:18420},{name:'SFTP',v:3240},{name:'SOAP',v:2810},{name:'MQ',v:360}];
 const protoColors = {'REST':'#58a6ff','SFTP':'#bc8cff','SOAP':'#d29922','MQ':'#3fb950'};
 
 export default function MonitoringPage() {
   const [logs, setLogs]     = useState([]);
   const [ifaces, setIfaces] = useState([]);
-
+  const [hourlyStats, setHourlyStats] = useState([]);
   useEffect(()=>{
     getAllLogs().then(r=>setLogs(r.data));
     getInterfaces().then(r=>setIfaces(r.data));
+    getHourlyStats().then(r => { setHourlyStats(r.data); });
   },[]);
 
+  const errData = hourlyStats.map(h => ({
+    h: `${String(h.hour).padStart(2,'0')}:00`,
+    v: h.errorRate
+  }));
   const perfItems = ifaces.map(i=>{
     const il = logs.filter(l => Number(l.interfaceId) === Number(i.id));
     const avg = il.length ? Math.round(il.reduce((s,l)=>s+l.durationMs,0)/il.length) : 0;

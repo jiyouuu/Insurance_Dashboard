@@ -1,9 +1,13 @@
 package com.insurance.center.controller;
 
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+
 import org.springframework.web.bind.annotation.*;
 
 import com.insurance.center.dto.DashboardSummaryDto;
+import com.insurance.center.dto.HourlyStatDto;
 import com.insurance.center.service.InterfaceService;
 
 @RestController
@@ -16,5 +20,10 @@ public class DashboardController {
     @GetMapping("/summary")
     public DashboardSummaryDto getSummary() {
         return service.getSummary();
+    }
+    
+    @GetMapping("/hourly-stats")
+    public List<HourlyStatDto> getHourlyStats() {
+        return service.getHourlyStats();
     }
 }

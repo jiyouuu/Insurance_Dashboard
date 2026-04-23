@@ -1,11 +1,15 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
-const hours = Array.from({length:24},(_,i)=>`${String(i).padStart(2,'0')}:00`);
-const tpData = hours.map((h,i) => ({h, v:[120,85,64,45,38,42,510,1240,1820,1650,1430,1280,1100,1320,1450,1380,1210,1050,980,870,620,480,310,240][i]}));
-
 const DONUT_COLORS = ['#3fb950','#f85149','#58a6ff','#d29922'];
 
-export default function DashboardPage({ summary, interfaces, onTabChange, onSelectIface }) {
+export default function DashboardPage({summary, interfaces, hourlyStats, onTabChange, onSelectIface }) {
+  
+   // 실제 데이터로 교체
+  const tpData = hourlyStats.map(h => ({
+    h: `${String(h.hour).padStart(2,'0')}:00`,
+    v: h.total
+  }));
+  
   const donutData = [
     {name:'정상',  value:summary.normal},
     {name:'오류',  value:summary.error},

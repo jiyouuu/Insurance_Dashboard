@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getSummary, getInterfaces } from './api/interfaceApi';
+import { getSummary, getInterfaces, getHourlyStats } from './api/interfaceApi';
 import Toast from './components/Toast';
 import RegisterModal from './components/RegisterModal';
 import DetailModal from './components/DetailModal';
@@ -27,11 +27,17 @@ export default function App() {
   const [showReg, setShowReg]     = useState(false);
   const [selectedIface, setSelectedIface] = useState(null);
   const [toast, setToast]         = useState({message:'',type:''});
+  const [hourlyStats, setHourlyStats] = useState([]);
 
   const load = async () => {
-    const [s,i] = await Promise.all([getSummary(), getInterfaces()]);
+    const [s, i, h] = await Promise.all([
+      getSummary(),
+      getInterfaces(),
+      getHourlyStats()
+    ]);
     setSummary(s.data);
     setIfaces(i.data);
+    setHourlyStats(h.data);
   };
 
   useEffect(()=>{ load(); },[]);
@@ -63,9 +69,9 @@ export default function App() {
       </nav>
 
       {/* Pages */}
-      {tab==='dashboard'  && <DashboardPage  summary={summary} interfaces={interfaces} onTabChange={setTab} onSelectIface={setSelectedIface} />}
+      {tab==='dashboard' && <DashboardPage summary={summary} interfaces={interfaces} hourlyStats={hourlyStats} onTabChange={setTab} onSelectIface={setSelectedIface} />}
       {tab==='interfaces' && <InterfacePage  interfaces={interfaces} onRefresh={load} onRegister={()=>setShowReg(true)} showToast={showToast} />}
-      {tab==='monitor'    && <MonitoringPage />}
+      {tab==='monitor' && <MonitoringPage hourlyStats={hourlyStats} />}
       {tab==='reprocess'  && <ReprocessPage  interfaces={interfaces} onRefresh={load} showToast={showToast} />}
       {tab==='logs'       && <LogPage />}
       {tab==='settings'   && <SettingsPage />}

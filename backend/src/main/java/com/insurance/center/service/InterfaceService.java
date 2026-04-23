@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.insurance.center.domain.InterfaceInfo;
 import com.insurance.center.domain.InterfaceLog;
 import com.insurance.center.dto.DashboardSummaryDto;
+import com.insurance.center.dto.HourlyStatDto;
 import com.insurance.center.dto.InterfaceInfoDto;
 import com.insurance.center.dto.InterfaceLogDto;
 import com.insurance.center.repository.InterfaceInfoRepository;
@@ -14,6 +15,7 @@ import com.insurance.center.repository.InterfaceLogRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 
@@ -115,5 +117,34 @@ public class InterfaceService {
 	    logRepo.save(log);
 	    entity.setStatus(success ? InterfaceInfo.InterfaceStatus.NORMAL : InterfaceInfo.InterfaceStatus.ERROR);
 	    return InterfaceInfoDto.from(interfaceRepo.save(entity));
+	}
+	
+	
+	public List<HourlyStatDto> getHourlyStats() {
+	    List<InterfaceLog> allLogs = logRepo.findAll();
+
+	    // 0~23시 초기화
+	    Map<Integer, List<InterfaceLog>> byHour = new java.util.TreeMap<>();
+	    for (int i = 0; i < 24; i++) byHour.put(i, new java.util.ArrayList<>());
+
+	    // 시간대별 분류
+	    for (InterfaceLog log : allLogs) {
+	        int hour = log.getExecutedAt().getHour();
+	        byHour.get(hour).add(log);
+	    }
+
+	    return byHour.entrySet().stream().map(e -> {
+	        int hour = e.getKey();
+	        List<InterfaceLog> logs = e.getValue();
+	        long total   = logs.size();
+	        long success = logs.stream().filter(l -> l.getResult() == InterfaceLog.LogResult.SUCCESS).count();
+	        long failure = total - success;
+	        double errorRate = total > 0 ? Math.round(failure * 1000.0 / total) / 10.0 : 0.0;
+	        long avgMs = total > 0 ? (long) logs.stream().mapToLong(InterfaceLog::getDurationMs).average().orElse(0) : 0;
+	        return HourlyStatDto.builder()
+	                .hour(hour).total(total).success(success)
+	                .failure(failure).errorRate(errorRate).avgMs(avgMs)
+	                .build();
+	    }).collect(Collectors.toList());
 	}
 }
