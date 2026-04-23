@@ -50,7 +50,7 @@ function SlaBar({ label, value, target, unit, good }) {
   );
 }
 
-export default function MonitoringPage({ hourlyStats,interfaces, onSelectIface }) {
+export default function MonitoringPage({ hourlyStats,interfaces, onSelectIface, showToast }) {
   const [logs, setLogs]     = useState([]);
   const [ifaces, setIfaces] = useState([]);
   const [alerts, setAlerts] = useState([]);
@@ -62,10 +62,16 @@ export default function MonitoringPage({ hourlyStats,interfaces, onSelectIface }
   const [showAllAlerts, setShowAllAlerts] = useState(false);
   const [perfTab, setPerfTab] = useState('worst'); // 'worst' | 'best'
 
+ 
   const handleAlertClick = (alert) => {
-    // alert.iface 이름으로 인터페이스 찾기
     const iface = interfaces.find(i => i.name === alert.iface);
-    if (iface) onSelectIface(iface);
+    if (!iface) return;
+
+    if (alert.type === 'error' && iface.status !== 'ERROR') {
+      showToast(`'${iface.name}' 상태가 이미 복구되었습니다 ✓`, 'success');
+      return;
+    }
+    onSelectIface(iface);
   };
   const fetchData = async () => {
     const [l, i, a] = await Promise.all([

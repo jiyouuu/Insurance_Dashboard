@@ -79,7 +79,7 @@ export default function App() {
       {/* Pages */}
       {tab==='dashboard' && <DashboardPage summary={summary} interfaces={interfaces} hourlyStats={hourlyStats} onTabChange={setTab} onSelectIface={setSelectedIface} onGoWithFilter={goWithFilter} />}
       {tab==='interfaces' && <InterfacePage interfaces={interfaces} onRefresh={load} onRegister={()=>setShowReg(true)} showToast={showToast} initFilter={initFilter} />}  
-      {tab==='monitor' && <MonitoringPage hourlyStats={hourlyStats} interfaces={interfaces}  onSelectIface={setSelectedIface}/>}
+      {tab==='monitor' && <MonitoringPage hourlyStats={hourlyStats} interfaces={interfaces}  onSelectIface={setSelectedIface} showToast={showToast}/>}
       {tab==='reprocess'  && <ReprocessPage  interfaces={interfaces} onRefresh={load} showToast={showToast} />}
       {tab==='logs'       && <LogPage />}
       {tab==='settings'   && <SettingsPage />}
