@@ -19,11 +19,21 @@ public class InterfaceController {
 
     private final InterfaceService service;
 
-    @GetMapping
+    @GetMapping()
     public List<InterfaceInfoDto> getAll() {
         return service.getAll();
     }
 
+    @GetMapping("/logs/all")
+    public List<InterfaceLogDto> getAllLogs() {
+        return service.getAllLogs();
+    }
+
+    @PutMapping("/{id}/execute")
+    public InterfaceInfoDto execute(@PathVariable Long id) {
+        return service.execute(id);
+    }
+    
     @GetMapping("/{id}")
     public InterfaceInfoDto getOne(@PathVariable Long id) {
         return service.getOne(id);

@@ -1,0 +1,9 @@
+import axios from 'axios';
+const BASE = 'http://localhost:8080/api';
+export const getSummary      = () => axios.get(`${BASE}/dashboard/summary`);
+export const getInterfaces   = () => axios.get(`${BASE}/interfaces`);
+export const getLogs         = (id) => axios.get(`${BASE}/interfaces/${id}/logs`);
+export const getAllLogs       = () => axios.get(`${BASE}/interfaces/logs/all`);
+export const retryInterface  = (id) => axios.put(`${BASE}/interfaces/${id}/retry`);
+export const executeInterface= (id) => axios.put(`${BASE}/interfaces/${id}/execute`);
+export const createInterface = (dto) => axios.post(`${BASE}/interfaces`, dto);

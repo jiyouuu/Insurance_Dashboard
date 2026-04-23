@@ -87,4 +87,33 @@ public class InterfaceService {
                 .running(all.stream().filter(i -> i.getStatus() == InterfaceInfo.InterfaceStatus.RUNNING).count())
                 .build();
     }
+
+
+	
+	public List<InterfaceLogDto> getAllLogs() {
+	    return logRepo.findAll(
+	        org.springframework.data.domain.Sort.by(
+	            org.springframework.data.domain.Sort.Direction.DESC, "executedAt"))
+	        .stream().map(InterfaceLogDto::from).collect(Collectors.toList());
+	}
+
+	@Transactional
+	public InterfaceInfoDto execute(Long id) {
+	    InterfaceInfo entity = interfaceRepo.findById(id)
+	            .orElseThrow(() -> new RuntimeException("Not found: " + id));
+	    entity.setStatus(InterfaceInfo.InterfaceStatus.RUNNING);
+	    entity.setLastExecutedAt(LocalDateTime.now());
+	    interfaceRepo.save(entity);
+	    boolean success = Math.random() > 0.2;
+	    InterfaceLog log = InterfaceLog.builder()
+	            .interfaceInfo(entity)
+	            .executedAt(LocalDateTime.now())
+	            .result(success ? InterfaceLog.LogResult.SUCCESS : InterfaceLog.LogResult.FAILURE)
+	            .message(success ? "수동 실행 완료" : "수동 실행 실패 - 연결 오류")
+	            .durationMs((long)(Math.random() * 600 + 80))
+	            .build();
+	    logRepo.save(log);
+	    entity.setStatus(success ? InterfaceInfo.InterfaceStatus.NORMAL : InterfaceInfo.InterfaceStatus.ERROR);
+	    return InterfaceInfoDto.from(interfaceRepo.save(entity));
+	}
 }
