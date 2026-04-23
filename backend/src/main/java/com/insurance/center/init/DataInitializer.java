@@ -1083,6 +1083,7 @@ public class DataInitializer implements CommandLineRunner {
     private String randomPick(String[] arr) {
         return arr[(int)(Math.random() * arr.length)];
     }
+    
     private InterfaceInfo build(String name, String institution,
                                  InterfaceInfo.Protocol protocol,
                                  InterfaceInfo.InterfaceStatus status,

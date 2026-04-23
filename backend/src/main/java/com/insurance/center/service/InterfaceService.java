@@ -1,6 +1,8 @@
 package com.insurance.center.service;
 
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -142,11 +144,22 @@ public class InterfaceService {
 	        long total   = logs.size();
 	        long success = logs.stream().filter(l -> l.getResult() == InterfaceLog.LogResult.SUCCESS).count();
 	        long failure = total - success;
+
+	        // 약간의 랜덤 변화 (실시간 느낌)
+	        long randomOffset = (long)(Math.random() * 10 - 5);
+	        total   = Math.max(0, total + randomOffset);
+	        success = Math.min(total, Math.max(0, success + randomOffset));
+	        failure = total - success;
+
 	        double errorRate = total > 0 ? Math.round(failure * 1000.0 / total) / 10.0 : 0.0;
-	        long avgMs = total > 0 ? (long) logs.stream().mapToLong(InterfaceLog::getDurationMs).average().orElse(0) : 0;
+	        long avgMs = total > 0
+	            ? (long)(logs.stream().mapToLong(InterfaceLog::getDurationMs).average().orElse(0)
+	                + Math.random() * 40 - 20)  // ±20ms 변동
+	            : 0;
+
 	        return HourlyStatDto.builder()
 	                .hour(hour).total(total).success(success)
-	                .failure(failure).errorRate(errorRate).avgMs(avgMs)
+	                .failure(failure).errorRate(errorRate).avgMs(Math.max(0, avgMs))
 	                .build();
 	    }).collect(Collectors.toList());
 	}
@@ -172,7 +185,7 @@ public class InterfaceService {
 	            alerts.add(alert);
 	        }
 
-	        // 응답시간 경고 (평균 300ms 초과)
+	        // 응답시간 경고 (평균 500ms 초과)
 	        List<InterfaceLog> ifaceLogs = allLogs.stream()
 	            .filter(l -> l.getInterfaceInfo().getId().equals(iface.getId()))
 	            .collect(java.util.stream.Collectors.toList());
@@ -181,7 +194,7 @@ public class InterfaceService {
 	            long avgMs = (long) ifaceLogs.stream()
 	                .mapToLong(InterfaceLog::getDurationMs)
 	                .average().orElse(0);
-	            if (avgMs > 300) {
+	            if (avgMs > 500) {
 	                Map<String, String> alert = new java.util.HashMap<>();
 	                alert.put("type", "warn");
 	                alert.put("title", iface.getName() + " - 응답시간 경고");
@@ -209,5 +222,51 @@ public class InterfaceService {
 
 	    // 최대 8개만
 	    return alerts.stream().limit(8).collect(java.util.stream.Collectors.toList());
+	}
+	
+	
+	private String randomPick(String[] arr) {
+	    return arr[(int)(Math.random() * arr.length)];
+	}
+	
+	@Scheduled(fixedRate = 10000) // 10초마다 (테스트용)
+	@Transactional
+	public void autoGenerateLogs() {
+		System.out.println("=== 자동 로그 생성 실행: " + LocalDateTime.now() + " ===");
+	    List<InterfaceInfo> all = interfaceRepo.findAll();
+	    if (all.isEmpty()) return;
+
+	    // 랜덤으로 5~10개 인터페이스 선택
+	    java.util.Collections.shuffle(all);
+	    int count = (int)(Math.random() * 6 + 5);
+	    List<InterfaceInfo> selected = all.subList(0, Math.min(count, all.size()));
+
+	    for (InterfaceInfo iface : selected) {
+	    	boolean success = Math.random() > 0.30; // 수정 30% 실패
+
+	        InterfaceLog.LogResult result;
+	        String message;
+	        double r = Math.random();
+	        if (success) {
+	            if (r < 0.5)      { result = InterfaceLog.LogResult.SUCCESS; message = randomPick(new String[]{"정상 처리 완료", "데이터 전송 성공", "응답 수신 완료", "배치 처리 완료"}); }
+	            else if (r < 0.75){ result = InterfaceLog.LogResult.INFO;    message = randomPick(new String[]{"스케줄 실행 시작", "헬스체크 정상", "연결 풀 갱신", "설정 재적용"}); }
+	            else               { result = InterfaceLog.LogResult.WARN;    message = randomPick(new String[]{"응답시간 임계값 초과", "재시도 후 성공", "부분 데이터 누락 감지", "큐 적체 경고"}); }
+	        } else {
+	            result = InterfaceLog.LogResult.FAILURE;
+	            message = randomPick(new String[]{"연결 타임아웃 (30s 초과)", "인증 실패 - 토큰 만료", "서버 응답 없음 (503)", "API 호출 한도 초과"});
+
+	            // 실패 시 ERROR 상태로 변경
+	            iface.setStatus(InterfaceInfo.InterfaceStatus.ERROR);
+	            interfaceRepo.save(iface);
+	        }
+
+	        logRepo.save(InterfaceLog.builder()
+	                .interfaceInfo(iface)
+	                .executedAt(LocalDateTime.now())
+	                .result(result)
+	                .message(message)
+	                .durationMs((long)(Math.random() * 700 + 80))
+	                .build());
+	    }
 	}
 }

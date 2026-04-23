@@ -60,7 +60,7 @@ export default function MonitoringPage({ hourlyStats,interfaces, onSelectIface }
   const countRef    = useRef(null);
   const [showAllPerf, setShowAllPerf] = useState(false);
   const [showAllAlerts, setShowAllAlerts] = useState(false);
-
+  const [perfTab, setPerfTab] = useState('worst'); // 'worst' | 'best'
 
   const handleAlertClick = (alert) => {
     // alert.iface 이름으로 인터페이스 찾기
@@ -96,7 +96,8 @@ export default function MonitoringPage({ hourlyStats,interfaces, onSelectIface }
   const total   = ifaces.length || 1;
   const errorCnt   = ifaces.filter(i => i.status === 'ERROR').length;
   const normalCnt  = ifaces.filter(i => i.status === 'NORMAL').length;
-  const successLogs = logs.filter(l => l.result === 'SUCCESS').length;
+  // SUCCESS + INFO + WARN = 성공으로 보는 것
+  const successLogs = logs.filter(l => l.result !== 'FAILURE').length;
   const failLogs    = logs.filter(l => l.result === 'FAILURE').length;
   const totalLogs   = logs.length || 1;
   const avgMs = logs.length ? Math.round(logs.reduce((s,l)=>s+l.durationMs,0)/logs.length) : 0;
@@ -104,20 +105,34 @@ export default function MonitoringPage({ hourlyStats,interfaces, onSelectIface }
   const errorRate   = Math.round((failLogs / totalLogs) * 100 * 10) / 10;
   const normalRate  = Math.round((normalCnt / total) * 100);
 
-  // 헬스 스코어: 정상비율 50% + 성공률 30% + 응답시간 20%
-  const msScore  = avgMs < 200 ? 100 : avgMs < 400 ? 70 : avgMs < 600 ? 40 : 20;
-  const healthScore = Math.round(normalRate * 0.5 + successRate * 0.3 + msScore * 0.2);
+  // 헬스 스코어
+  const msScore = avgMs < 300 ? 100 : avgMs < 500 ? 75 : avgMs < 700 ? 50 : 30;
+  const recentLogs = logs.slice(0, 50); // 최근 50개만
+  const recentSuccess = recentLogs.filter(l => l.result !== 'FAILURE').length;
+  const recentSuccessRate = recentLogs.length ? Math.round(recentSuccess / recentLogs.length * 100) : 100;
+
+  const healthScore = Math.round(
+    recentSuccessRate * 0.5 +   // 최근 성공률 50% (제일 민감)
+    normalRate        * 0.3 +   // 정상률 30%
+    msScore           * 0.2     // 응답시간 20%
+  );
 
   // ── 성능 현황 ──
-  const perfItems = ifaces.map(i => {
-    const il = logs.filter(l => Number(l.interfaceId) === Number(i.id));
-    const avg = il.length ? Math.round(il.reduce((s,l)=>s+l.durationMs,0)/il.length) : 0;
-    const pct = Math.min(100, Math.round(avg / 10));
-    const color = avg < 200 ? 'var(--green)' : avg < 400 ? 'var(--orange)' : 'var(--red)';
-    return {name: i.name, avg, pct, color};
+  const perfAll = ifaces.map(i => {
+  const il = logs.filter(l => Number(l.interfaceId) === Number(i.id));
+  const avg = il.length ? Math.round(il.reduce((s,l)=>s+l.durationMs,0)/il.length) : 0;
+  const pct = Math.min(100, Math.round(avg / 10));
+  const color = avg < 300 ? 'var(--green)' : avg < 550 ? 'var(--orange)' : 'var(--red)';
+  return {name: i.name, avg, pct, color};
   }).filter(p => p.avg > 0)
-    .sort((a,b) => b.avg - a.avg)
-    .slice(0, 13);
+  .sort((a,b) => b.avg - a.avg);
+const worst = perfAll.slice(0, 10);    // 느린 10개
+const best  = perfAll.slice(-10);      // 빠른 10개
+const perfItems = [...worst, ...best]; // 기본 20개
+
+
+// 전체 보기는 상위 50개만
+const perfMore = perfAll.slice(0, 50);
 
   // ── 오류율 차트 ──
   const errData = hourlyStats.map(h => ({
@@ -145,30 +160,52 @@ export default function MonitoringPage({ hourlyStats,interfaces, onSelectIface }
         </div>
       </div>
 
-      {/* 헬스 스코어 + SLA */}
-      <div style={{display:'grid',gridTemplateColumns:'200px 1fr',gap:16,marginBottom:16}}>
-        <div className="chart-card" style={{marginBottom:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <CircleGauge score={healthScore} />
-        </div>
-        <div className="chart-card" style={{marginBottom:0}}>
-          <div className="card-title">SLA 달성 현황</div>
-          <SlaBar label="시스템 정상률"  value={normalRate}   target={95}  unit="%" good={true} />
-          <SlaBar label="요청 성공률"    value={successRate}  target={99}  unit="%" good={true} />
-          <SlaBar label="평균 응답시간"  value={avgMs}        target={300} unit="ms" good={false} />
-          <SlaBar label="오류율"         value={errorRate}    target={2}   unit="%" good={false} />
+    {/* 헬스 스코어 + SLA */}
+    <div style={{display:'grid', gridTemplateColumns:'220px 1fr', gap:16, marginBottom:16}}>
+      <div className="chart-card" style={{marginBottom:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 16px'}}>
+        <CircleGauge score={healthScore} />
+        <div style={{marginTop:10, textAlign:'center'}}>
+          <div style={{fontSize:11, color:'var(--text3)', lineHeight:1.6}}>
+            정상률 · 성공률 · 응답시간<br/>종합 시스템 건강도
+          </div>
         </div>
       </div>
+      <div className="chart-card" style={{marginBottom:0}}>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4}}>
+          <div className="card-title" style={{marginBottom:0}}>SLA 달성 현황</div>
+          <span style={{fontSize:10, color:'var(--text3)', fontFamily:'IBM Plex Mono'}}>Service Level Agreement</span>
+        </div>
+        <div style={{fontSize:11, color:'var(--text3)', marginBottom:16}}>시스템이 약속한 품질 기준 달성 여부</div>
+        <SlaBar label="시스템 정상률"  value={normalRate}   target={80}  unit="%" good={true} />
+        <SlaBar label="요청 성공률"    value={successRate}  target={90}  unit="%" good={true} />
+        <SlaBar label="평균 응답시간"  value={avgMs}        target={600} unit="ms" good={false} />
+        <SlaBar label="오류율"         value={errorRate}    target={15}  unit="%" good={false} />
+      </div>
+    </div>
 
       {/* 성능 현황 + 알림 */}
       <div className="monitor-grid">
         <div className="chart-card" style={{marginBottom:0}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14}}>
-            <div className="card-title" style={{marginBottom:0}}>성능 현황 (평균 응답시간)</div>
-            <button className="btn-ghost btn-sm" onClick={() => setShowAllPerf(p => !p)}>
-              {showAllPerf ? '접기 ↑' : `전체 보기 (${perfItems.length}) ↓`}
-            </button>
+            <div className="card-title" style={{marginBottom:0}}>응답시간 현황</div>
+            <div style={{display:'flex', gap:4}}>
+              <button
+                className={`btn-ghost btn-sm`}
+                style={perfTab==='worst' ? {background:'var(--red)',color:'#fff',border:'none'} : {}}
+                onClick={() => setPerfTab('worst')}
+              >
+                🔴 느린 순
+              </button>
+              <button
+                className={`btn-ghost btn-sm`}
+                style={perfTab==='best' ? {background:'var(--green)',color:'#fff',border:'none'} : {}}
+                onClick={() => setPerfTab('best')}
+              >
+                🟢 빠른 순
+              </button>
+            </div>
           </div>
-          {(showAllPerf ? perfItems : perfItems.slice(0,8)).map(p => (
+          {(perfTab === 'worst' ? perfAll.slice(0,10) : [...perfAll].reverse().slice(0,10)).map(p => (
             <div key={p.name} className="perf-item">
               <div className="perf-name" style={{width:140,fontSize:12,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
               <div className="perf-bar-wrap"><div className="perf-bar" style={{width:`${p.pct}%`,background:p.color}} /></div>
