@@ -59,18 +59,21 @@ public class InterfaceService {
         entity.setStatus(InterfaceInfo.InterfaceStatus.RUNNING);
         entity.setLastExecutedAt(LocalDateTime.now());
         interfaceRepo.save(entity);
-
+        
+        boolean success = Math.random() > 0.3; // 70% 성공률
         // 로그 기록
         InterfaceLog log = InterfaceLog.builder()
                 .interfaceInfo(entity)
                 .executedAt(LocalDateTime.now())
-                .result(InterfaceLog.LogResult.SUCCESS)
-                .message("재처리 성공")
+                .result(success ? InterfaceLog.LogResult.SUCCESS : InterfaceLog.LogResult.FAILURE)
+                .message(success ? "재처리 성공" : "재처리 실패 - 연결 오류 지속")
                 .durationMs((long)(Math.random() * 500 + 100))
                 .build();
         logRepo.save(log);
 
-        entity.setStatus(InterfaceInfo.InterfaceStatus.NORMAL);
+        entity.setStatus(success
+                ? InterfaceInfo.InterfaceStatus.NORMAL
+                : InterfaceInfo.InterfaceStatus.ERROR);
         return InterfaceInfoDto.from(interfaceRepo.save(entity));
     }
 

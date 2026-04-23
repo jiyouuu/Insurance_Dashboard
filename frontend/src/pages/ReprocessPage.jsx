@@ -8,9 +8,13 @@ export default function ReprocessPage({ interfaces, onRefresh, showToast }) {
 
   const handleReprocess = async (iface) => {
     const { retryInterface } = await import('../api/interfaceApi');
+    showToast(`'${iface.name}' 재처리 중...`, '');
     await retryInterface(iface.id);
-    showToast(`'${iface.name}' 재처리 완료`, 'success');
     onRefresh();
+    setTimeout(async () => {
+      await onRefresh();
+      showToast(`'${iface.name}' 재처리 완료 ✓`, 'success');
+    }, 2500);
   };
 
   return (

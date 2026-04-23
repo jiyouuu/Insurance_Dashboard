@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import DetailModal from './LogPage';
-
+import { executeInterface, retryInterface } from '../api/interfaceApi';
 const STATUSES  = ['','NORMAL','ERROR','RUNNING','PENDING'];
 const PROTOCOLS = ['','REST','SOAP','MQ','BATCH','SFTP','FTP'];
 
@@ -16,6 +16,28 @@ export default function InterfacePage({ interfaces, onRefresh, onRegister, showT
     if (search && !i.name.includes(search) && !i.institution.includes(search)) return false;
     return true;
   });
+
+  const handleQuickExecute = async (e, iface) => {
+  e.stopPropagation();
+  showToast(`'${iface.name}' 실행 중...`, '');
+  await executeInterface(iface.id);
+  onRefresh();
+  setTimeout(async () => {
+    await onRefresh();
+    showToast(`'${iface.name}' 실행 완료 ✓`, 'success');
+  }, 2500);
+  };
+
+  const handleQuickRetry = async (e, iface) => {
+    e.stopPropagation();
+    showToast(`'${iface.name}' 재처리 중...`, '');
+    await retryInterface(iface.id);
+    onRefresh();
+    setTimeout(async () => {
+      await onRefresh();
+      showToast(`'${iface.name}' 재처리 완료 ✓`, 'success');
+    }, 2500);
+  };
 
   return (
     <div className="page">
@@ -58,8 +80,10 @@ export default function InterfacePage({ interfaces, onRefresh, onRegister, showT
                   <td className="last-run">{i.lastExecutedAt?new Date(i.lastExecutedAt).toLocaleString('ko-KR'):'-'}</td>
                   <td onClick={e=>e.stopPropagation()}>
                     <div className="row-actions">
-                      <button className="icon-btn" onClick={()=>setSelected(i)}>▶ 실행</button>
-                      {i.status==='ERROR' && <button className="icon-btn" style={{color:'var(--red)'}} onClick={()=>setSelected(i)}>↺ 재처리</button>}
+                      <button className="icon-btn" onClick={(e)=>handleQuickExecute(e, i)}>▶ 실행</button>
+                      {i.status==='ERROR' &&
+                        <button className="icon-btn" style={{color:'var(--red)'}} onClick={(e)=>handleQuickRetry(e, i)}>↺ 재처리</button>
+                      }
                     </div>
                   </td>
                 </tr>

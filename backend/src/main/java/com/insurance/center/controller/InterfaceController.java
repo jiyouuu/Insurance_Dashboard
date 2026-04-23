@@ -30,12 +30,12 @@ public class InterfaceController {
     }
 
     @PutMapping("/{id}/execute")
-    public InterfaceInfoDto execute(@PathVariable Long id) {
+    public InterfaceInfoDto execute(@PathVariable("id") Long id) {
         return service.execute(id);
     }
     
     @GetMapping("/{id}")
-    public InterfaceInfoDto getOne(@PathVariable Long id) {
+    public InterfaceInfoDto getOne(@PathVariable("id")  Long id) {
         return service.getOne(id);
     }
 
@@ -45,12 +45,12 @@ public class InterfaceController {
     }
 
     @PutMapping("/{id}/retry")
-    public InterfaceInfoDto retry(@PathVariable Long id) {
+    public InterfaceInfoDto retry(@PathVariable("id")  Long id) {
         return service.retry(id);
     }
 
     @GetMapping("/{id}/logs")
-    public List<InterfaceLogDto> getLogs(@PathVariable Long id) {
+    public List<InterfaceLogDto> getLogs(@PathVariable("id")  Long id) {
         return service.getLogs(id);
     }
 }

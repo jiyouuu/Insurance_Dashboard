@@ -11,12 +11,27 @@ export default function DetailModal({ iface, onClose, onRefresh, showToast }) {
   const handleAction = async (action) => {
     setLoading(true);
     try {
-      if (action === 'retry')   await retryInterface(iface.id);
-      if (action === 'execute') await executeInterface(iface.id);
-      showToast(`'${iface.name}' ${action === 'retry' ? '재처리' : '실행'} 완료`, 'success');
-      onRefresh(); onClose();
-    } finally { setLoading(false); }
-  };
+        let result;
+        if (action === 'retry')   result = await retryInterface(iface.id);
+        if (action === 'execute') result = await executeInterface(iface.id);
+
+        const newStatus = result.data.status;
+
+        showToast(
+        newStatus === 'ERROR'
+            ? `'${iface.name}' ${action === 'retry' ? '재처리' : '실행'} 실패 ✕`
+            : `'${iface.name}' ${action === 'retry' ? '재처리' : '실행'} 완료 ✓`,
+        newStatus === 'ERROR' ? 'error' : 'success'
+        );
+
+        onRefresh();
+        onClose();
+    } catch (e) {
+        showToast('오류가 발생했습니다.', 'error');
+    } finally {
+        setLoading(false);
+    }
+    };
 
   const successCount = logs.filter(l=>l.result==='SUCCESS').length;
   const successRate  = logs.length ? Math.round(successCount/logs.length*100) : 0;
