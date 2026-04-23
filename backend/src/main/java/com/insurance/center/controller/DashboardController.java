@@ -3,6 +3,7 @@ package com.insurance.center.controller;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.web.bind.annotation.*;
 
@@ -25,5 +26,10 @@ public class DashboardController {
     @GetMapping("/hourly-stats")
     public List<HourlyStatDto> getHourlyStats() {
         return service.getHourlyStats();
+    }
+    
+    @GetMapping("/alerts")
+    public List<Map<String, String>> getAlerts() {
+        return service.getAlerts();
     }
 }

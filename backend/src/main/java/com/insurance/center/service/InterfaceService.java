@@ -150,4 +150,64 @@ public class InterfaceService {
 	                .build();
 	    }).collect(Collectors.toList());
 	}
+	
+	
+	public List<Map<String, String>> getAlerts() {
+	    List<Map<String, String>> alerts = new java.util.ArrayList<>();
+	    List<InterfaceInfo> all = interfaceRepo.findAll();
+	    List<InterfaceLog> allLogs = logRepo.findAll();
+
+	    for (InterfaceInfo iface : all) {
+	        // 🔴 ERROR 상태
+	        if (iface.getStatus() == InterfaceInfo.InterfaceStatus.ERROR) {
+	            long failCount = allLogs.stream()
+	                .filter(l -> l.getInterfaceInfo().getId().equals(iface.getId()))
+	                .filter(l -> l.getResult() == InterfaceLog.LogResult.FAILURE)
+	                .count();
+	            Map<String, String> alert = new java.util.HashMap<>();
+	            alert.put("type", "error");
+	            alert.put("title", iface.getName() + " - 연결 오류");
+	            alert.put("desc", iface.getProtocol() + " 연결 실패. 누적 오류 " + failCount + "건. 즉시 확인 필요.");
+	            alert.put("iface", iface.getName());
+	            alerts.add(alert);
+	        }
+
+	        // 응답시간 경고 (평균 300ms 초과)
+	        List<InterfaceLog> ifaceLogs = allLogs.stream()
+	            .filter(l -> l.getInterfaceInfo().getId().equals(iface.getId()))
+	            .collect(java.util.stream.Collectors.toList());
+
+	        if (!ifaceLogs.isEmpty()) {
+	            long avgMs = (long) ifaceLogs.stream()
+	                .mapToLong(InterfaceLog::getDurationMs)
+	                .average().orElse(0);
+	            if (avgMs > 300) {
+	                Map<String, String> alert = new java.util.HashMap<>();
+	                alert.put("type", "warn");
+	                alert.put("title", iface.getName() + " - 응답시간 경고");
+	                alert.put("desc", "평균 응답시간 " + avgMs + "ms. 임계값(300ms) 초과.");
+	                alert.put("iface", iface.getName());
+	                alerts.add(alert);
+	            }
+	        }
+	    }
+
+	    // 최근 배치 성공 알림
+	    allLogs.stream()
+	        .filter(l -> l.getInterfaceInfo().getProtocol() == InterfaceInfo.Protocol.BATCH)
+	        .filter(l -> l.getResult() == InterfaceLog.LogResult.SUCCESS)
+	        .sorted((a, b) -> b.getExecutedAt().compareTo(a.getExecutedAt()))
+	        .limit(2)
+	        .forEach(l -> {
+	            Map<String, String> alert = new java.util.HashMap<>();
+	            alert.put("type", "info");
+	            alert.put("title", l.getInterfaceInfo().getName() + " 배치 완료");
+	            alert.put("desc", "배치 정상 완료. 응답시간 " + l.getDurationMs() + "ms.");
+	            alert.put("iface", l.getInterfaceInfo().getName());
+	            alerts.add(alert);
+	        });
+
+	    // 최대 8개만
+	    return alerts.stream().limit(8).collect(java.util.stream.Collectors.toList());
+	}
 }

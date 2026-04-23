@@ -8,3 +8,4 @@ export const retryInterface  = (id) => axios.put(`${BASE}/interfaces/${id}/retry
 export const executeInterface= (id) => axios.put(`${BASE}/interfaces/${id}/execute`);
 export const createInterface = (dto) => axios.post(`${BASE}/interfaces`, dto);
 export const getHourlyStats = () => axios.get(`${BASE}/dashboard/hourly-stats`);
+export const getAlerts = () => axios.get(`${BASE}/dashboard/alerts`);
