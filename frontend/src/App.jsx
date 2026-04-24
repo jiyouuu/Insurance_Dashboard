@@ -9,6 +9,7 @@ import MonitoringPage from './pages/MonitoringPage';
 import ReprocessPage  from './pages/ReprocessPage';
 import LogPage        from './pages/LogPage';
 import SettingsPage   from './pages/SettingsPage';
+import AiPage from './pages/AiPage';
 import './index.css';
 
 const TABS = [
@@ -17,6 +18,7 @@ const TABS = [
   {key:'monitor',    icon:'📡', label:'모니터링'},
   {key:'reprocess',  icon:'↺', label:'재처리'},
   {key:'logs',       icon:'≡', label:'로그·성능'},
+  {key:'ai',         icon:'🤖', label:'AI 분석'},
   {key:'settings',   icon:'⚙', label:'설정'},
 ];
 
@@ -82,6 +84,7 @@ export default function App() {
       {tab==='monitor' && <MonitoringPage hourlyStats={hourlyStats} interfaces={interfaces}  onSelectIface={setSelectedIface} showToast={showToast} refreshKey={monitorRefresh}/>}
       {tab==='reprocess'  && <ReprocessPage  interfaces={interfaces} onRefresh={load} showToast={showToast} />}
       {tab==='logs' && <LogPage interfaces={interfaces} onSelectIface={setSelectedIface} />}
+      {tab==='ai' && <AiPage interfaces={interfaces} />}
       {tab==='settings'   && <SettingsPage />}
 
       {/* Modals */}
