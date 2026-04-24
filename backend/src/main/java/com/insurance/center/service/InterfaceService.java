@@ -68,7 +68,7 @@ public class InterfaceService {
                 .interfaceInfo(entity)
                 .executedAt(LocalDateTime.now())
                 .result(success ? InterfaceLog.LogResult.SUCCESS : InterfaceLog.LogResult.FAILURE)
-                .message(success ? "재처리 성공" : "재처리 실패 - 연결 오류 지속")
+                .message(success ? "[재처리] 복구 완료" : "[재처리] 실패 - 연결 오류 지속")  // ← 재처리 명시
                 .durationMs((long)(Math.random() * 500 + 100))
                 .build();
         logRepo.save(log);
@@ -168,48 +168,52 @@ public class InterfaceService {
 	public List<Map<String, String>> getAlerts() {
 	    List<Map<String, String>> alerts = new java.util.ArrayList<>();
 	    List<InterfaceInfo> all = interfaceRepo.findAll();
-	    List<InterfaceLog> allLogs = logRepo.findAll();
 
-	    for (InterfaceInfo iface : all) {
-	        // 🔴 ERROR 상태
-	        if (iface.getStatus() == InterfaceInfo.InterfaceStatus.ERROR) {
-	            long failCount = allLogs.stream()
-	                .filter(l -> l.getInterfaceInfo().getId().equals(iface.getId()))
+	    // 지금 ERROR인 것만
+	    all.stream()
+	        .filter(i -> i.getStatus() == InterfaceInfo.InterfaceStatus.ERROR)
+	        .limit(5)
+	        .forEach(i -> {
+	            long failCount = logRepo.findByInterfaceInfoIdOrderByExecutedAtDesc(i.getId())
+	                .stream()
 	                .filter(l -> l.getResult() == InterfaceLog.LogResult.FAILURE)
 	                .count();
 	            Map<String, String> alert = new java.util.HashMap<>();
 	            alert.put("type", "error");
-	            alert.put("title", iface.getName() + " - 연결 오류");
-	            alert.put("desc", iface.getProtocol() + " 연결 실패. 누적 오류 " + failCount + "건. 즉시 확인 필요.");
-	            alert.put("iface", iface.getName());
+	            alert.put("title", i.getName() + " - 연결 오류");
+	            alert.put("desc", i.getProtocol() + " 연결 실패. 누적 오류 " + failCount + "건.");
+	            alert.put("iface", i.getName());
 	            alerts.add(alert);
-	        }
+	        });
 
-	        // 응답시간 경고 (평균 500ms 초과)
-	        List<InterfaceLog> ifaceLogs = allLogs.stream()
-	            .filter(l -> l.getInterfaceInfo().getId().equals(iface.getId()))
-	            .collect(java.util.stream.Collectors.toList());
-
-	        if (!ifaceLogs.isEmpty()) {
-	            long avgMs = (long) ifaceLogs.stream()
+	    // 지금 응답시간 느린 것만 (실제 로그 기반)
+	    all.stream()
+	        .filter(i -> i.getStatus() == InterfaceInfo.InterfaceStatus.NORMAL
+	                  || i.getStatus() == InterfaceInfo.InterfaceStatus.RUNNING)
+	        .forEach(i -> {
+	            List<InterfaceLog> recent = logRepo
+	                .findByInterfaceInfoIdOrderByExecutedAtDesc(i.getId())
+	                .stream().limit(5)
+	                .collect(java.util.stream.Collectors.toList());
+	            if (recent.isEmpty()) return;
+	            long avgMs = (long) recent.stream()
 	                .mapToLong(InterfaceLog::getDurationMs)
 	                .average().orElse(0);
 	            if (avgMs > 500) {
 	                Map<String, String> alert = new java.util.HashMap<>();
 	                alert.put("type", "warn");
-	                alert.put("title", iface.getName() + " - 응답시간 경고");
-	                alert.put("desc", "평균 응답시간 " + avgMs + "ms. 임계값(300ms) 초과.");
-	                alert.put("iface", iface.getName());
+	                alert.put("title", i.getName() + " - 응답시간 경고");
+	                alert.put("desc", "최근 평균 " + avgMs + "ms. 임계값(500ms) 초과.");
+	                alert.put("iface", i.getName());
 	                alerts.add(alert);
 	            }
-	        }
-	    }
+	        });
 
-	    // 최근 배치 성공 알림
-	    allLogs.stream()
+	    // 배치 최근 성공
+	    logRepo.findAll().stream()
 	        .filter(l -> l.getInterfaceInfo().getProtocol() == InterfaceInfo.Protocol.BATCH)
 	        .filter(l -> l.getResult() == InterfaceLog.LogResult.SUCCESS)
-	        .sorted((a, b) -> b.getExecutedAt().compareTo(a.getExecutedAt()))
+	        .sorted((a,b) -> b.getExecutedAt().compareTo(a.getExecutedAt()))
 	        .limit(2)
 	        .forEach(l -> {
 	            Map<String, String> alert = new java.util.HashMap<>();
@@ -220,7 +224,6 @@ public class InterfaceService {
 	            alerts.add(alert);
 	        });
 
-	    // 최대 8개만
 	    return alerts.stream().limit(8).collect(java.util.stream.Collectors.toList());
 	}
 	

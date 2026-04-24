@@ -31,26 +31,41 @@ function CircleGauge({ score }) {
 
 // ── SLA 게이지 바 ──
 function SlaBar({ label, value, target, unit, good }) {
-  const isGood = good ? value >= target : value <= target;
-  const color = isGood ? 'var(--green)' : 'var(--red)';
-  const pct = good ? Math.min(100, (value / (target * 1.2)) * 100) : Math.min(100, (value / (target * 2)) * 100);
+  // 3단계 색상
+  let color;
+  if (good) {
+    // 높을수록 좋은 것 (정상률, 성공률)
+    if (value >= target)           color = 'var(--green)';   // 목표 달성
+    else if (value >= target * 0.9) color = 'var(--orange)'; // 목표의 90% 이상
+    else                           color = 'var(--red)';     // 많이 부족
+  } else {
+    // 낮을수록 좋은 것 (응답시간, 오류율)
+    if (value <= target)           color = 'var(--green)';   // 목표 달성
+    else if (value <= target * 1.5) color = 'var(--orange)'; // 목표의 150% 이하
+    else                           color = 'var(--red)';     // 많이 초과
+  }
+
+  const pct = good
+    ? Math.min(100, (value / (target * 1.2)) * 100)
+    : Math.min(100, (value / (target * 2)) * 100);
+
   return (
     <div style={{marginBottom:14}}>
-      <div style={{display:'flex',justifyContent:'space-between',marginBottom:5,fontSize:12}}>
+      <div style={{display:'flex', justifyContent:'space-between', marginBottom:5, fontSize:12}}>
         <span style={{color:'var(--text2)'}}>{label}</span>
-        <div style={{display:'flex',gap:8,alignItems:'center'}}>
-          <span style={{fontFamily:'IBM Plex Mono',fontWeight:700,color}}>{value}{unit}</span>
-          <span style={{fontSize:10,color:'var(--text3)',fontFamily:'IBM Plex Mono'}}>목표 {target}{unit}</span>
+        <div style={{display:'flex', gap:8, alignItems:'center'}}>
+          <span style={{fontFamily:'IBM Plex Mono', fontWeight:700, color}}>{value}{unit}</span>
+          <span style={{fontSize:10, color:'var(--text3)', fontFamily:'IBM Plex Mono'}}>목표 {target}{unit}</span>
         </div>
       </div>
-      <div style={{height:6,background:'var(--bg3)',borderRadius:3,overflow:'hidden'}}>
-        <div style={{height:'100%',width:`${pct}%`,background:color,borderRadius:3,transition:'width 1s ease'}} />
+      <div style={{height:6, background:'var(--bg3)', borderRadius:3, overflow:'hidden'}}>
+        <div style={{height:'100%', width:`${pct}%`, background:color, borderRadius:3, transition:'width 1s ease'}} />
       </div>
     </div>
   );
 }
 
-export default function MonitoringPage({ hourlyStats,interfaces, onSelectIface, showToast }) {
+export default function MonitoringPage({ hourlyStats,interfaces, onSelectIface, showToast,refreshKey }) {
   const [logs, setLogs]     = useState([]);
   const [ifaces, setIfaces] = useState([]);
   const [alerts, setAlerts] = useState([]);
@@ -62,17 +77,6 @@ export default function MonitoringPage({ hourlyStats,interfaces, onSelectIface, 
   const [showAllAlerts, setShowAllAlerts] = useState(false);
   const [perfTab, setPerfTab] = useState('worst'); // 'worst' | 'best'
 
- 
-  const handleAlertClick = (alert) => {
-    const iface = interfaces.find(i => i.name === alert.iface);
-    if (!iface) return;
-
-    if (alert.type === 'error' && iface.status !== 'ERROR') {
-      showToast(`'${iface.name}' 상태가 이미 복구되었습니다 ✓`, 'success');
-      return;
-    }
-    onSelectIface(iface);
-  };
   const fetchData = async () => {
     const [l, i, a] = await Promise.all([
       getAllLogs(), getInterfaces(), getAlerts()
@@ -84,7 +88,7 @@ export default function MonitoringPage({ hourlyStats,interfaces, onSelectIface, 
     setCountdown(30);
   };
 
-  useEffect(() => {
+   useEffect(() => {
     fetchData();
     // 30초마다 자동 새로고침
     intervalRef.current = setInterval(fetchData, 30000);
@@ -97,6 +101,25 @@ export default function MonitoringPage({ hourlyStats,interfaces, onSelectIface, 
       clearInterval(countRef.current);
     };
   }, []);
+
+  // refreshKey 바뀌면 즉시 갱신  ← 이게 핵심
+  useEffect(() => {
+    if (refreshKey > 0) fetchData();
+  }, [refreshKey]);
+
+  const handleAlertClick = (alert) => {
+    const iface = interfaces.find(i => i.name === alert.iface);
+    if (!iface) return;
+
+    if (alert.type === 'error' && iface.status !== 'ERROR') {
+      showToast(`'${iface.name}' 상태가 이미 복구되었습니다 ✓`, 'success');
+      return;
+    }
+    onSelectIface(iface);
+  };
+
+
+ 
 
   // ── 헬스 스코어 계산 ──
   const total   = ifaces.length || 1;
@@ -232,27 +255,67 @@ const perfMore = perfAll.slice(0, 50);
           {alerts.length === 0
             ? <div className="empty-state">알림 없음 ✅</div>
             : (showAllAlerts ? alerts : alerts.slice(0,4)).map((a, i) => (
-              <div
-                key={i}
-                className={`alert-item alert-${a.type}`}
-                onClick={() => handleAlertClick(a)}
-                style={{cursor:'pointer', transition:'opacity .15s'}}
-                onMouseEnter={e => e.currentTarget.style.opacity='.75'}
-                onMouseLeave={e => e.currentTarget.style.opacity='1'}
-              >
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
-                  <div>
-                    <div className="alert-title">
-                      {a.type==='error'?'🔴':a.type==='warn'?'🟡':'🔵'} {a.title}
-                    </div>
-                    <div className="alert-desc">{a.desc}</div>
-                  </div>
-                  <span style={{fontSize:10,color:'var(--text3)',fontFamily:'IBM Plex Mono',whiteSpace:'nowrap',marginLeft:12,marginTop:2}}>
-                    {a.type==='error' ? '재처리 →' : '상세 →'}
-                  </span>
-                </div>
+        <div key={i} className={`alert-item alert-${a.type}`}
+          style={{cursor: a.type==='warn' ? 'pointer' : 'default'}}
+        >
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+            <div style={{flex:1}}>
+              <div className="alert-title">
+                {a.type==='error' ? '🔴' : a.type==='warn' ? '🟡' : '🔵'} {a.title}
               </div>
-            ))
+              <div className="alert-desc">{a.desc}</div>
+              {/* 경고면 NORMAL 상태 명시 */}
+              {a.type==='warn' &&
+                <div style={{fontSize:10, color:'var(--text3)', marginTop:4, fontFamily:'var(--font-mono)'}}>
+                  ※ 연결 상태는 정상 · 성능 개선 필요
+                </div>
+              }
+            </div>
+            <div style={{display:'flex', flexDirection:'column', gap:4, marginLeft:12, flexShrink:0}}>
+              {a.type==='error' && (
+                <button
+                  className="btn-reprocess"
+                  style={{fontSize:11, padding:'4px 10px'}}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    const iface = interfaces.find(f => f.name === a.iface);
+                    if (!iface) return;
+                    showToast(`'${iface.name}' 재처리 중...`, '');
+                    const { retryInterface } = await import('../api/interfaceApi');
+                    const result = await retryInterface(iface.id);  // ← result 받기
+                    
+                    setTimeout(async () => {
+                      const newStatus = result.data.status;  // ← 실제 결과 확인
+                      if (newStatus === 'ERROR') {
+                        showToast(`'${iface.name}' 재처리 실패 ✕ 로그를 확인하세요`, 'error');
+                      } else {
+                        showToast(`'${iface.name}' 재처리 성공 ✓ 복구 완료`, 'success');
+                      }
+                      await fetchData();
+                    }, 2500);
+                  }}
+                >
+                  ↺ 재처리
+                </button>
+              )}
+              {a.type==='warn' && (
+                <button
+                  className="btn-ghost btn-sm"
+                  style={{fontSize:11}}
+                  onClick={() => handleAlertClick(a)}
+                >
+                  성능 상세 →
+                </button>
+              )}
+              {a.type==='info' && (
+                <span style={{fontSize:10, color:'var(--text3)', fontFamily:'var(--font-mono)'}}>
+                  정보
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      ))
           }
         </div>
       </div>
@@ -278,7 +341,7 @@ const perfMore = perfAll.slice(0, 50);
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(48,54,61,.6)" horizontal={false} />
               <XAxis type="number" tick={{fill:'#6e7681',fontSize:10}} />
               <YAxis type="category" dataKey="name" tick={{fill:'var(--text)',fontSize:12}} width={40} />
-              <Tooltip contentStyle={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,fontSize:12}} formatter={v=>[`${v.toLocaleString()}건`,'처리량']} />
+              <Tooltip contentStyle={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,fontSize:12,  color:'#e6edf3'}} itemStyle={{color:'#e6edf3'}}   labelStyle={{color:'#e6edf3'}} formatter={v=>[`${v.toLocaleString()}건`,'처리량']} />
               <Bar dataKey="v" radius={[0,4,4,0]} name="처리량">
                 {protoData.map(p => <Cell key={p.name} fill={protoColors[p.name]||'#58a6ff'} />)}
               </Bar>

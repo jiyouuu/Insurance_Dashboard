@@ -3,12 +3,12 @@ import { getAllLogs, getInterfaces } from '../api/interfaceApi';
 
 const LEVELS = ['','INFO','ERROR','WARN','SUCCESS'];
 
-export default function LogPage() {
+export default function LogPage({ interfaces, onSelectIface }) {
   const [logs, setLogs]     = useState([]);
   const [ifaces, setIfaces] = useState([]);
   const [filterL, setFilterL] = useState('');
   const [filterI, setFilterI] = useState('');
-
+  const [filterMsg, setFilterMsg] = useState('');
   useEffect(()=>{
     getAllLogs().then(r=>setLogs(r.data));
     getInterfaces().then(r=>setIfaces(r.data));
@@ -27,6 +27,7 @@ export default function LogPage() {
   const filtered = enriched.filter(l=>{
     if (filterL && l.level !== filterL) return false;
     if (filterI && String(l.interfaceId) !== filterI) return false;
+    if (filterMsg && !l.message.includes(filterMsg)) return false;
     return true;
   });
 
@@ -47,6 +48,11 @@ export default function LogPage() {
           <select className="select-filter" value={filterI} onChange={e=>setFilterI(e.target.value)}>
             <option value="">전체 인터페이스</option>
             {ifaces.map(i=><option key={i.id} value={i.id}>{i.name}</option>)}
+          </select>
+          <select className="select-filter" value={filterMsg} onChange={e=>setFilterMsg(e.target.value)}>
+            <option value="">전체 유형</option>
+            <option value="재처리">재처리만</option>
+            <option value="수동 실행">수동 실행만</option>
           </select>
         </div>
       </div>
@@ -74,7 +80,13 @@ export default function LogPage() {
           {filtered.length===0
             ? <div className="empty-state">로그가 없습니다</div>
             : filtered.map(log=>(
-              <div key={log.id} className="log-entry">
+              <div key={log.id} className="log-entry"
+                  style={{cursor:'pointer'}}
+                  onClick={() => {
+                    const iface = interfaces.find(i => i.id === log.interfaceId);
+                    if (iface) onSelectIface(iface);
+                  }}
+              >
                 <span className="log-time">{new Date(log.executedAt).toLocaleString('ko-KR')}</span>
                 <span className={`log-level-${log.level}`}>{log.level}</span>
                 <span className="log-iface">{log.ifaceName}</span>

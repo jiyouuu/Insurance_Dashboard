@@ -29,7 +29,7 @@ export default function App() {
   const [toast, setToast]         = useState({message:'',type:''});
   const [hourlyStats, setHourlyStats] = useState([]);
   const [initFilter, setInitFilter] = useState('');
-
+  const [monitorRefresh, setMonitorRefresh] = useState(0);
 
   // 페이지 이동 + 필터 동시에
   const goWithFilter = (tab, filter = '') => {
@@ -78,16 +78,15 @@ export default function App() {
 
       {/* Pages */}
       {tab==='dashboard' && <DashboardPage summary={summary} interfaces={interfaces} hourlyStats={hourlyStats} onTabChange={setTab} onSelectIface={setSelectedIface} onGoWithFilter={goWithFilter} />}
-      {tab==='interfaces' && <InterfacePage interfaces={interfaces} onRefresh={load} onRegister={()=>setShowReg(true)} showToast={showToast} initFilter={initFilter} />}  
-      {tab==='monitor' && <MonitoringPage hourlyStats={hourlyStats} interfaces={interfaces}  onSelectIface={setSelectedIface} showToast={showToast}/>}
+      {tab==='interfaces' && <InterfacePage interfaces={interfaces} onRefresh={load} onRegizster={()=>setShowReg(true)} showToast={showToast} initFilter={initFilter} />}  
+      {tab==='monitor' && <MonitoringPage hourlyStats={hourlyStats} interfaces={interfaces}  onSelectIface={setSelectedIface} showToast={showToast} refreshKey={monitorRefresh}/>}
       {tab==='reprocess'  && <ReprocessPage  interfaces={interfaces} onRefresh={load} showToast={showToast} />}
-      {tab==='logs'       && <LogPage />}
+      {tab==='logs' && <LogPage interfaces={interfaces} onSelectIface={setSelectedIface} />}
       {tab==='settings'   && <SettingsPage />}
 
       {/* Modals */}
       {showReg && <RegisterModal onClose={()=>setShowReg(false)} onCreated={load} showToast={showToast} />}
-      {selectedIface && <DetailModal iface={selectedIface} onClose={()=>setSelectedIface(null)} onRefresh={load} showToast={showToast} />}
-
+      {selectedIface && <DetailModal iface={selectedIface} onClose={()=>setSelectedIface(null)} onRefresh={()=>{ load(); setMonitorRefresh(p => p + 1); }} showToast={showToast} />}
       {/* Toast */}
       <Toast message={toast.message} type={toast.type} onHide={()=>setToast({message:'',type:''})} />
     </>
