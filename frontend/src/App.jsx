@@ -84,7 +84,7 @@ export default function App() {
       {tab==='monitor' && <MonitoringPage hourlyStats={hourlyStats} interfaces={interfaces}  onSelectIface={setSelectedIface} showToast={showToast} refreshKey={monitorRefresh}/>}
       {tab==='reprocess'  && <ReprocessPage  interfaces={interfaces} onRefresh={load} showToast={showToast} />}
       {tab==='logs' && <LogPage interfaces={interfaces} onSelectIface={setSelectedIface} />}
-      {tab==='ai' && <AiPage interfaces={interfaces} />}
+      {tab==='ai' && <AiPage interfaces={interfaces} onSelectIface={setSelectedIface} showToast={showToast} />}
       {tab==='settings'   && <SettingsPage />}
 
       {/* Modals */}
